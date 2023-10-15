@@ -154,12 +154,62 @@
         }
       }
 
+      :has(.win-effect) {
+        position: relative;
+      }
+      .win-effect,
+      .win-effect::after,
+      .win-effect::before {
+        --width: 60px;
+        inset: 0;
+        position: absolute;
+        border-radius: 50%;
+        outline: var(--width) solid rgba(255, 255, 255, 0.1);
+        animation: win-effect 3s linear infinite;
+      }
+      @media (max-width: 767px) {
+        .win-effect,
+        .win-effect::after,
+        .win-effect::before {
+          --width: 30px;
+        }
+      }
+      .win-effect::after,
+      .win-effect::before {
+        content: "";
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .win-effect::after {
+        width: calc(100% + var(--width) * 2);
+        height: calc(100% + var(--width) * 2);
+        outline-color: rgba(255, 255, 255, 0.05);
+      }
+      .win-effect::before {
+        width: calc(100% + var(--width) * 4);
+        height: calc(100% + var(--width) * 4);
+        outline-color: rgba(255, 255, 255, 0.025);
+      }
+      @keyframes win-effect {
+        0%,
+        50%,
+        100% {
+          opacity: 1;
+        }
+        25%,
+        75% {
+          opacity: 0;
+        }
+      }
+
       /* Game styles */
       body {
         line-height: 1;
         font-weight: 600;
         min-height: 100vh;
         user-select: none;
+        overflow-x: hidden;
         color: var(--primary-cl);
         text-transform: uppercase;
         font-family: var(--body-font);
@@ -782,24 +832,30 @@
             },
             step3: function () {
               const { getUser, getHouse } = Controller;
-              let state = "";
 
-              if (getUser() === getHouse()) state = "Draw";
+              if (getUser() === getHouse()) $(".title").innerHTML = "Draw";
               else {
                 const isUserWin =
                   Controller.getMode() === "original"
                     ? originalRules[getUser()] === getHouse()
                     : bonusRules[getUser()].includes(getHouse());
 
-                state = `You ${isUserWin ? "Win" : "Lose"}`;
-                isUserWin
-                  ? Controller.increaseScore()
-                  : Controller.decreaseScore();
+                if (isUserWin) {
+                  Controller.increaseScore();
+                  $(".title").innerHTML = "You Win";
+                  $(".user .btn").innerHTML +=
+                    "<div aria-hidden='true' class='win-effect'></div>";
+                } else {
+                  Controller.decreaseScore();
+                  $(".title").innerHTML = "You Lose";
+                  $(".house .btn").innerHTML +=
+                    "<div aria-hidden='true' class='win-effect'></div>";
+                }
+
+                $(".score .num").innerHTML = Controller.getScore();
               }
 
-              $(".title").innerHTML = state;
               Helpers.showNode(".state");
-              $(".score .num").innerHTML = Controller.getScore();
             },
 
             // Events handlers
