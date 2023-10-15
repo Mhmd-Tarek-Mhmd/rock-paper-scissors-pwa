@@ -620,5 +620,234 @@
         </ul>
       </dialog>
     </main>
+
+    <script>
+      (function () {
+        const $ = document.querySelector.bind(document);
+        const $$ = document.querySelectorAll.bind(document);
+        const modes = { BONUS: "BONUS", ORIGINAL: "ORIGINAL" };
+        const storageKeys = { SCORE: "score-game", MODE: "mode-game" };
+        const originalRules = {
+          paper: "rock",
+          rock: "scissors",
+          scissors: "paper",
+        };
+        const bonusRules = {
+          paper: ["rock", "spock"],
+          lizard: ["spock", "paper"],
+          spock: ["scissors", "rock"],
+          rock: ["scissors", "lizard"],
+          scissors: ["paper", "lizard"],
+        };
+
+        const Modal = {
+          step: 1,
+          score: 0,
+          user: null,
+          house: null,
+          mode: modes.ORIGINAL,
+        };
+
+        const Controller = {
+          getStep: () => Modal.step,
+          setStep: (val) => (Modal.step = val),
+
+          getMode: () => Modal.mode,
+          toggleMode: () => {
+            Modal.mode =
+              Modal.mode === modes.ORIGINAL ? modes.BONUS : modes.ORIGINAL;
+            localStorage.setItem(storageKeys.MODE, Modal.mode);
+          },
+
+          getUser: () => Modal.user,
+          setUser: (val) => (Modal.user = val),
+
+          getHouse: () => Modal.house,
+          setHouse: (val) => (Modal.house = val),
+
+          getScore: () => Modal.score,
+          setScore: (val) => (Modal.score = val),
+          increaseScore: (val) => {
+            Modal.score++;
+            localStorage.setItem(storageKeys.SCORE, Modal.score);
+          },
+          decreaseScore: (val) => {
+            Modal.score--;
+            localStorage.setItem(storageKeys.SCORE, Modal.score);
+          },
+
+          reset: () => {
+            Modal.step = 1;
+            Modal.user = null;
+            Modal.house = null;
+          },
+
+          init: () => {
+            Views.init();
+          },
+        };
+
+        const Views = {
+          init: function () {
+            // Polyfills
+            if (!HTMLDialogElement || !document.createElement("dialog")?.show) {
+              $("head").innerHTML +=
+                '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dialog-polyfill/0.5.6/dialog-polyfill.min.css" />';
+              Helpers.loadJS(
+                "https://cdnjs.cloudflare.com/ajax/libs/dialog-polyfill/0.5.6/dialog-polyfill.min.js",
+                () => {
+                  $$("dialog").forEach((dialog) =>
+                    dialogPolyfill.registerDialog(dialog)
+                  );
+                }
+              );
+            }
+
+            // Events
+            $(".modal-closer").onclick = () => $(".modal").close();
+            $(".modal-trigger").onclick = () => $(".modal").showModal();
+            $(".mode-toggler").onclick = this.render.handleModeToggler;
+            $(".play-again").onclick = this.render.handlePlayAgain;
+            $$("button.btn").forEach((ele) => {
+              ele.addEventListener("click", async (e) => {
+                const userSelect = ele.dataset.select;
+                const selections = Object.keys(
+                  Controller.getMode() === modes.ORIGINAL
+                    ? originalRules
+                    : bonusRules
+                );
+
+                if (selections.includes(userSelect)) {
+                  this.render.step1(userSelect);
+                  await Helpers.delay(1000);
+                  this.render.step2(selections);
+                  await Helpers.delay(500);
+                  this.render.step3();
+                } else window.navigation.reload();
+              });
+            });
+
+            // Set data from storage
+            if (localStorage?.[storageKeys.MODE] === modes.BONUS)
+              $(".mode-toggler").click();
+            if (+localStorage?.[storageKeys.SCORE]) {
+              const score = +localStorage[storageKeys.SCORE];
+              Controller.setScore(score);
+              $(".score .num").innerHTML = score;
+            }
+          },
+
+          render: {
+            // Steps
+            step1: function (userSelect) {
+              Controller.setUser(userSelect);
+
+              $(
+                ".rest-steps [role=alert]"
+              ).innerHTML = `You picked ${userSelect}. The house is picking...`;
+              $(".user").insertAdjacentElement(
+                "afterbegin",
+                Helpers.changeTag($(`.${userSelect}`))
+              );
+
+              Helpers.hideNode(".choose-step");
+              Helpers.showNode(".rest-steps");
+
+              $(".mode-toggler").style.opacity = 0.4;
+              $(".mode-toggler").setAttribute("disabled", "");
+
+              Controller.setStep(2);
+              $(".game").dataset.step = 2;
+            },
+            step2: function (selections) {
+              const houseSelect =
+                selections[Helpers.getRandom(selections.length)];
+              Controller.setHouse(houseSelect);
+
+              $(
+                ".rest-steps [role=alert]"
+              ).innerHTML = `The House picked ${houseSelect}.`;
+
+              Helpers.hideNode(".house .loader");
+              $(".house").insertAdjacentElement(
+                "afterbegin",
+                Helpers.changeTag($(`.${houseSelect}`))
+              );
+
+              Controller.setStep(3);
+              $(".game").dataset.step = 3;
+            },
+            step3: function () {
+              const { getUser, getHouse } = Controller;
+              let state = "";
+
+              if (getUser() === getHouse()) state = "Draw";
+              else {
+                const isUserWin =
+                  Controller.getMode() === "original"
+                    ? originalRules[getUser()] === getHouse()
+                    : bonusRules[getUser()].includes(getHouse());
+
+                state = `You ${isUserWin ? "Win" : "Lose"}`;
+                isUserWin
+                  ? Controller.increaseScore()
+                  : Controller.decreaseScore();
+              }
+
+              $(".title").innerHTML = state;
+              Helpers.showNode(".state");
+              $(".score .num").innerHTML = Controller.getScore();
+            },
+
+            // Events handlers
+            handlePlayAgain: function () {
+              $(".game").dataset.step = 1;
+              Controller.reset();
+              $(".mode-toggler").style.opacity = 1;
+              $(".mode-toggler").removeAttribute("disabled");
+              Helpers.hideNode(".rest-steps");
+              Helpers.hideNode(".state");
+              Helpers.showNode(".choose-step");
+              Helpers.showNode(".house .loader");
+              $(".user .btn").remove();
+              $(".house .btn").remove();
+            },
+            handleModeToggler: function () {
+              Controller.toggleMode();
+              $(".game").classList.toggle("bonus");
+
+              const mode = Controller.getMode();
+              this.ariaChecked = String(mode === modes.BONUS);
+              this.ariaLabel = `Switch to ${modes?.[mode].toLowerCase()} mode`;
+            },
+          },
+        };
+
+        const Helpers = {
+          getRandom: (length) => Math.floor(Math.random() * length),
+          showNode: (nodeClass) => $(nodeClass).removeAttribute("hidden"),
+          hideNode: (nodeClass) => $(nodeClass).setAttribute("hidden", ""),
+          delay: (dur) => new Promise((resolve) => setTimeout(resolve, dur)),
+          changeTag: (ele, tagName = "div") => {
+            const clone = ele.cloneNode(true);
+            const newEle = document.createElement(tagName);
+            Object.values(clone.attributes).forEach((attr) =>
+              newEle.setAttribute(attr.name, attr.value)
+            );
+            newEle.appendChild(...clone.children);
+            return newEle;
+          },
+          loadJS: function (FILE_URL, cb, async = true) {
+            const scriptEle = document.createElement("script");
+            scriptEle.setAttribute("src", FILE_URL);
+            scriptEle.setAttribute("async", async);
+            document.head.appendChild(scriptEle);
+            scriptEle.addEventListener("load", cb || function () {});
+          },
+        };
+
+        Controller.init();
+      })();
+    </script>
   </body>
 </html>
