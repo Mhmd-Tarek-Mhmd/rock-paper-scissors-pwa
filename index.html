@@ -391,16 +391,19 @@
         height: 50px;
         font-size: 17px;
         margin-top: 24px;
-        border-radius: 4px;
+        border-radius: 8px;
         letter-spacing: 2px;
         text-transform: uppercase;
         color: var(--score-num-text);
         background-color: var(--primary-cl);
       }
       @media (max-width: 767px) {
+        .rest-steps {
+          row-gap: 40px;
+        }
         .rest-steps .state {
           grid-row-start: 2;
-          grid-column-start: 2;
+          grid-column: 1 / -1;
         }
       }
       @media (min-width: 768px) {
