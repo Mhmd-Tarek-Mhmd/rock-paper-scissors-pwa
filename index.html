@@ -242,10 +242,18 @@
         padding-inline: 26px;
         align-content: space-between;
       }
+      @media (max-width: 350px) {
+        .game {
+          padding-inline: 4px;
+        }
+      }
       @media (min-width: 768px) {
         .game {
           padding-block: 45px 30px;
         }
+      }
+      .game > * {
+        max-width: 100vw;
       }
       .game .bonus-item {
         display: none !important;
@@ -301,14 +309,24 @@
       }
       @media (max-width: 767px) {
         .header .original-logo {
+          left: -7px;
+          position: relative;
           transform: scale(0.5) translateX(-70px);
         }
         .header .bonus-logo {
+          left: -7px;
+          position: relative;
           transform: scale(0.4) translateX(-70px);
         }
         .header .mode-toggler {
           left: -14%;
           font-size: 12px;
+        }
+        .header .mode-toggler .label:first-of-type {
+          right: calc(100% + 5px);
+        }
+        .header .mode-toggler .label:last-of-type {
+          left: calc(100% + 5px);
         }
       }
       .header .score {
